@@ -10,6 +10,12 @@ visor
 https://github.com/VisorFinance/VisorFactory/blob/master/contracts/visor/Visor.sol
 */
 
+/*
+TODO function getTokenBalance(tokenAddress)
+TODO function lock(tokenAddress, amount) [permission signature]
+TODO function rageQuit()
+*/
+
 contract Cyberdeck {
     using SafeMath for uint256;
 
@@ -60,45 +66,53 @@ contract Cyberdeck {
         IERC20(token).transfer(to, amount);
         emit LogTokenTransfer(token, to, amount);
     }
-
-    // function getTokenBalance(tokenAddress)
-    // function lock(tokenAddress, amount) [permission signature]
-    // function rageQuit()
-
 }
 
 contract CyberdeckSweatshop {
+    address payable public nightcorp;
+    bool public sweatshopStatus = true;
+
     uint256 public numberOfCyberdecks;
     Cyberdeck[] public cyberdecks;
     mapping (address => address[]) private deckowners;
 
     event NewCyberdeck(address indexed owner, address indexed cyberdeck);
 
-    function _createCyberdeck() internal returns (address) {
-        Cyberdeck deck = new Cyberdeck(msg.sender);
+    constructor(address _nightcorp) payable {
+        nightcorp = payable(_nightcorp);
+    }
+
+    function _createCyberdeck(address caller) internal returns (address) {
+        Cyberdeck deck = new Cyberdeck(caller);
         cyberdecks.push(deck);
-        deckowners[msg.sender].push(address(deck));
+        deckowners[caller].push(address(deck));
         numberOfCyberdecks++;
 
-        emit NewCyberdeck(msg.sender, address(deck));
+        emit NewCyberdeck(caller, address(deck));
         return address(deck);
     }
 
-    function _createCyberdeckAndSendEther() internal returns (address) {
-        Cyberdeck deck = (new Cyberdeck){value: msg.value}(msg.sender);
+    function _createCyberdeckAndSendEther(address caller) internal returns (address) {
+        Cyberdeck deck = (new Cyberdeck){value: msg.value}(caller);
         cyberdecks.push(deck);
-        deckowners[msg.sender].push(address(deck));
+        deckowners[caller].push(address(deck));
         numberOfCyberdecks++;
 
-        emit NewCyberdeck(msg.sender, address(deck));
+        emit NewCyberdeck(caller, address(deck));
         return address(deck);
     }
-    
-    function create() external payable returns (address) {
+
+    function create(address caller) external payable returns (address) {
+        require(sweatshopStatus == true, "Cyberdeck Sweatshop: this sweatshop has been retired.");
         if (msg.value > 0) {
-            return _createCyberdeckAndSendEther();
+            return _createCyberdeckAndSendEther(caller);
         } else {
-            return _createCyberdeck();
+            return _createCyberdeck(caller);
         }
+    }
+
+    function retire() external {
+        require(msg.sender == nightcorp, "Cyberdeck Sweatshop: retire can only be called through NightCorp.");
+        sweatshopStatus = false;
     }
 }
